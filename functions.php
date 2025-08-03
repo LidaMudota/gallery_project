@@ -16,6 +16,19 @@ function escape(string $str): string
     return htmlspecialchars($str, ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8');
 }
 
+function csrf_token(): string
+{
+    if (empty($_SESSION['csrf_token'])) {
+        $_SESSION['csrf_token'] = bin2hex(random_bytes(32));
+    }
+    return $_SESSION['csrf_token'];
+}
+
+function verify_csrf(string $token): bool
+{
+    return hash_equals($_SESSION['csrf_token'] ?? '', $token);
+}
+
 function validate_image(array $file): array
 {
     $errors = [];
@@ -32,6 +45,12 @@ function validate_image(array $file): array
     $type = mime_content_type($file['tmp_name']);
     if (!in_array($type, ALLOWED_TYPES, true)) {
         $errors[] = 'Недопустимый формат файла.';
+    }
+
+    $ext = strtolower(pathinfo($file['name'], PATHINFO_EXTENSION));
+    $allowedExt = ['jpg', 'jpeg', 'png', 'gif'];
+    if (!in_array($ext, $allowedExt, true)) {
+        $errors[] = 'Недопустимое расширение файла.';
     }
 
     return $errors;

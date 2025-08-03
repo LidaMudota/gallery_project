@@ -11,21 +11,26 @@ if (!is_logged_in()) {
 $errors = [];
 
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_FILES['image'])) {
-    $file = $_FILES['image'];
-    $errors = validate_image($file);
+    if (!verify_csrf($_POST['token'] ?? '')) {
+        $errors[] = 'Неверный CSRF токен';
+    } else {
+        $file = $_FILES['image'];
+        $errors = validate_image($file);
 
-    if (!$errors) {
-        $filename = uniqid() . '_' . basename($file['name']);
-        $targetPath = UPLOAD_DIR . $filename;
+        if (!$errors) {
+            $ext = strtolower(pathinfo($file['name'], PATHINFO_EXTENSION));
+            $filename = uniqid('', true) . '.' . $ext;
+            $targetPath = UPLOAD_DIR . $filename;
 
-        if (move_uploaded_file($file['tmp_name'], $targetPath)) {
-            $pdo = get_db();
-            $stmt = $pdo->prepare("INSERT INTO images (filename, uploaded_by, created_at) VALUES (?, ?, NOW())");
-            $stmt->execute([$filename, current_user_id()]);
-            header("Location: index.php?upload=success");
-            exit;
-        } else {
-            $errors[] = 'Ошибка при загрузке файла.';
+            if (move_uploaded_file($file['tmp_name'], $targetPath)) {
+                $pdo = get_db();
+                $stmt = $pdo->prepare("INSERT INTO images (filename, uploaded_by, created_at) VALUES (?, ?, NOW())");
+                $stmt->execute([$filename, current_user_id()]);
+                header("Location: index.php?upload=success");
+                exit;
+            } else {
+                $errors[] = 'Ошибка при загрузке файла.';
+            }
         }
     }
 }
@@ -47,6 +52,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_FILES['image'])) {
             <label for="image">Выберите изображение:</label>
             <input type="file" name="image" id="image" class="form-control" required>
         </div>
+        <input type="hidden" name="token" value="<?= csrf_token() ?>">
         <button type="submit" class="btn btn-primary">Загрузить</button>
     </form>
 </div>

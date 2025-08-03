@@ -11,23 +11,27 @@ if (is_logged_in()) {
 $errors = [];
 
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
-    $username = trim($_POST['username'] ?? '');
-    $password = $_POST['password'] ?? '';
-
-    if ($username === '' || $password === '') {
-        $errors[] = 'Заполните все поля';
+    if (!verify_csrf($_POST['token'] ?? '')) {
+        $errors[] = 'Неверный CSRF токен';
     } else {
-        $pdo = get_db();
-        $stmt = $pdo->prepare("SELECT id, password FROM users WHERE username = ?");
-        $stmt->execute([$username]);
-        $user = $stmt->fetch();
+        $username = trim($_POST['username'] ?? '');
+        $password = $_POST['password'] ?? '';
 
-        if ($user && password_verify($password, $user['password'])) {
-            $_SESSION['user_id'] = $user['id'];
-            header("Location: index.php");
-            exit;
+        if ($username === '' || $password === '') {
+            $errors[] = 'Заполните все поля';
         } else {
-            $errors[] = 'Неверный логин или пароль';
+            $pdo = get_db();
+            $stmt = $pdo->prepare("SELECT id, password FROM users WHERE username = ?");
+            $stmt->execute([$username]);
+            $user = $stmt->fetch();
+
+            if ($user && password_verify($password, $user['password'])) {
+                $_SESSION['user_id'] = $user['id'];
+                header("Location: index.php");
+                exit;
+            } else {
+                $errors[] = 'Неверный логин или пароль';
+            }
         }
     }
 }
@@ -53,6 +57,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             <label for="password">Пароль:</label>
             <input type="password" name="password" id="password" class="form-control" required>
         </div>
+        <input type="hidden" name="token" value="<?= csrf_token() ?>">
         <button type="submit" class="btn btn-primary">Войти</button>
     </form>
     <p class="mt-3">Нет аккаунта? <a href="register.php">Зарегистрируйтесь</a></p>

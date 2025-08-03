@@ -8,6 +8,11 @@ if (!is_logged_in()) {
     exit;
 }
 
+if (!verify_csrf($_GET['token'] ?? '')) {
+    header('Location: index.php');
+    exit;
+}
+
 $id = (int)($_GET['id'] ?? 0);
 $pdo = get_db();
 $stmt = $pdo->prepare('SELECT filename, uploaded_by FROM images WHERE id = ?');

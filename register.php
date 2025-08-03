@@ -11,23 +11,27 @@ if (is_logged_in()) {
 $errors = [];
 
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
-    $username = trim($_POST['username'] ?? '');
-    $password = $_POST['password'] ?? '';
-
-    if ($username === '' || $password === '') {
-        $errors[] = 'Заполните все поля';
+    if (!verify_csrf($_POST['token'] ?? '')) {
+        $errors[] = 'Неверный CSRF токен';
     } else {
-        $pdo = get_db();
-        $stmt = $pdo->prepare('SELECT id FROM users WHERE username = ?');
-        $stmt->execute([$username]);
-        if ($stmt->fetch()) {
-            $errors[] = 'Логин уже занят';
+        $username = trim($_POST['username'] ?? '');
+        $password = $_POST['password'] ?? '';
+
+        if ($username === '' || $password === '') {
+            $errors[] = 'Заполните все поля';
         } else {
-            $hash = password_hash($password, PASSWORD_DEFAULT);
-            $stmt = $pdo->prepare('INSERT INTO users (username, password) VALUES (?, ?)');
-            $stmt->execute([$username, $hash]);
-            header('Location: login.php?registered=1');
-            exit;
+            $pdo = get_db();
+            $stmt = $pdo->prepare('SELECT id FROM users WHERE username = ?');
+            $stmt->execute([$username]);
+            if ($stmt->fetch()) {
+                $errors[] = 'Логин уже занят';
+            } else {
+                $hash = password_hash($password, PASSWORD_DEFAULT);
+                $stmt = $pdo->prepare('INSERT INTO users (username, password) VALUES (?, ?)');
+                $stmt->execute([$username, $hash]);
+                header('Location: login.php?registered=1');
+                exit;
+            }
         }
     }
 }
@@ -53,6 +57,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             <label for="password">Пароль:</label>
             <input type="password" name="password" id="password" class="form-control" required>
         </div>
+        <input type="hidden" name="token" value="<?= csrf_token() ?>">
         <button type="submit" class="btn btn-primary">Зарегистрироваться</button>
     </form>
     <p class="mt-3">Уже есть аккаунт? <a href="login.php">Войдите</a></p>
