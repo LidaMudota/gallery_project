@@ -2,6 +2,7 @@
 require_once 'config.php';
 require_once 'database.php';
 require_once 'functions.php';
+require_once 'murmurs.php';
 require_once 'templates/header.php';
 
 $pdo = get_db();
@@ -14,12 +15,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && is_logged_in()) {
     $content = trim($_POST['content'] ?? '');
     $image_id = (int)($_POST['image_id'] ?? 0);
     if ($content !== '' && $image_id > 0) {
-        $stmt = $pdo->prepare("INSERT INTO comments (image_id, user_id, content, created_at) VALUES (?, ?, ?, NOW())");
-        $stmt->execute([$image_id, current_user_id(), $content]);
+        plant_murmur($pdo, $image_id, current_user_id(), $content);
     }
     header('Location: index.php');
     exit;
-}
+    }
 
 $images = $pdo->query("SELECT images.*, users.username FROM images JOIN users ON images.uploaded_by = users.id ORDER BY images.created_at DESC")->fetchAll();
 ?>
@@ -36,21 +36,22 @@ $images = $pdo->query("SELECT images.*, users.username FROM images JOIN users ON
                 <?php endif; ?>
             </div>
             <?php
-                $cstmt = $pdo->prepare("SELECT comments.*, users.username FROM comments JOIN users ON comments.user_id = users.id WHERE image_id = ? ORDER BY comments.created_at ASC");
-                $cstmt->execute([$img['id']]);
-                $comments = $cstmt->fetchAll();
+            $comments = pull_murmurs($pdo, $img['id']);
             ?>
             <div class="comments mb-2">
                 <?php foreach ($comments as $comment): ?>
                     <div class="mb-2">
-                        <strong><?= escape($comment['username']) ?>:</strong>
-                        <?= escape($comment['content']) ?>
-                        <?php if (is_logged_in() && $comment['user_id'] == current_user_id()): ?>
-                            <a href="delete_comment.php?id=<?= $comment['id'] ?>&token=<?= csrf_token() ?>" class="text-danger ms-2 delete-confirm">×</a>
-                        <?php endif; ?>
-                    </div>
-                <?php endforeach; ?>
-            </div>
+                          <div>
+                              <strong><?= escape($comment['username']) ?></strong>
+                                <span class="text-muted small ms-1"><?= date('d.m.Y H:i', strtotime($comment['created_at'])) ?></span>
+                              <?php if (is_logged_in() && $comment['user_id'] == current_user_id()): ?>
+                                  <a href="delete_comment.php?id=<?= $comment['id'] ?>&token=<?= csrf_token() ?>" class="text-danger ms-2 delete-confirm">×</a>
+                              <?php endif; ?>
+                          </div>
+                          <div><?= escape($comment['content']) ?></div>
+                      </div>
+                  <?php endforeach; ?>
+              </div>
             <?php if (is_logged_in()): ?>
                 <form action="index.php" method="post">
                     <div class="mb-2">
