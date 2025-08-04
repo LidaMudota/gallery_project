@@ -20,6 +20,7 @@ $stmt->execute([$id]);
 $image = $stmt->fetch();
 
 if ($image && $image['uploaded_by'] == current_user_id()) {
+    $pdo->prepare('DELETE FROM comments WHERE image_id = ?')->execute([$id]);
     $pdo->prepare('DELETE FROM images WHERE id = ?')->execute([$id]);
     $path = UPLOAD_DIR . $image['filename'];
     if (is_file($path)) {
