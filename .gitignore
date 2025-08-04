@@ -1,0 +1,16 @@
+# Игнор загруженных файлов и временных данных
+uploads/*
+!uploads/.gitkeep
+
+comments/*
+!comments/.gitkeep
+
+# Логи и кэш
+*.log
+*.tmp
+
+# Файлы окружения
+.env
+
+# Зависимости Composer
+vendor/
